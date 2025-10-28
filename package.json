@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "prepare": "husky install"
+    "prepare": "[ -f ./node_modules/.bin/husky ] && ./node_modules/.bin/husky install || echo 'Skipping husky install (husky not installed)'"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
