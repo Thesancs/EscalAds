@@ -5,7 +5,7 @@ import { type PropsWithChildren, useState, useEffect } from "react";
 import { AppHeader } from "./_components/header";
 import { AppSidebar } from "./_components/sidebar";
 import { MobileSidebar } from "./_components/mobile-sidebar";
-import { useAuth } from "@/lib/firebase";
+import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 

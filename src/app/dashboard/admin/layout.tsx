@@ -3,7 +3,7 @@
 
 import { type PropsWithChildren, useState, useEffect } from "react";
 import { AppHeader } from "@/app/dashboard/_components/header";
-import { useAuth } from "@/lib/firebase";
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -1,16 +1,7 @@
 
 'use client';
 
-import {
-  LayoutDashboard,
-  Tag,
-  MessageSquare,
-  Shield,
-  Copy,
-  FileCode,
-  User,
-  DollarSign, // Ícone para financeiro
-} from 'lucide-react';
+import { LayoutDashboard, Tag, Globe2, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -21,15 +12,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
 
 const allMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/ofertas', label: 'Ofertas', icon: Tag, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/reviews', label: 'Reviews', icon: MessageSquare, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/anticlone', label: 'AntiClone', icon: Shield, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/clonador', label: 'Clonador', icon: Copy, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/metadata', label: 'Metadata', icon: FileCode, roles: ['Owner', 'Admin', 'Membro'] },
+  { href: '/dashboard/offers', label: 'Ofertas Internas', icon: Tag, roles: ['Owner', 'Admin', 'Membro'] },
+  { href: '/dashboard/monitored', label: 'Monitoradas', icon: Globe2, roles: ['Owner', 'Admin', 'Membro'] },
   { href: '/dashboard/perfil', label: 'Perfil', icon: User, roles: ['Owner', 'Admin', 'Membro'] },
 ];
 

@@ -88,7 +88,7 @@ const whatsappImageGeneratorFlow = ai.defineFlow(
       },
     });
 
-    if (!media.url) {
+    if (!media || !media.url) {
       throw new Error('A geração de imagem falhou ao não retornar uma URL.');
     }
 
