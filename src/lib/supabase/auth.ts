@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { assertSupabaseEnv } from './config';
 import { supabaseFetch } from './client';
+import { fetchProfileById, mergeUserWithProfile } from './profiles';
 import type { SupabaseAuthUser, OfferRole } from './types';
 
 type AuthResponse = {
@@ -160,7 +161,8 @@ export async function getCurrentUserFromCookies() {
 
   if (accessToken) {
     try {
-      return await getUserFromAccessToken(accessToken);
+      const user = await getUserFromAccessToken(accessToken);
+      return await hydrateUserWithProfile(user);
     } catch (error) {
       console.error('Failed to read Supabase user from access token', error);
     }
@@ -170,7 +172,8 @@ export async function getCurrentUserFromCookies() {
     try {
       const refreshed = await refreshAccessToken(refreshToken);
       await persistSessionCookies(refreshed);
-      return refreshed.user;
+      const session = await hydrateSessionWithProfile(refreshed);
+      return session.user;
     } catch (error) {
       console.error('Failed to refresh Supabase session', error);
       await clearSessionCookies();
@@ -215,6 +218,25 @@ function normalizeAuthResponse(data: AuthResponse): NormalizedAuthResponse {
     refreshToken: data.refresh_token,
     user,
   } satisfies NormalizedAuthResponse;
+}
+
+async function hydrateUserWithProfile(
+  user: SupabaseAuthUser,
+): Promise<SupabaseAuthUser> {
+  try {
+    const profile = await fetchProfileById(user.id);
+    return mergeUserWithProfile(user, profile);
+  } catch (error) {
+    console.error('Failed to load Supabase profile for user', user.id, error);
+    return user;
+  }
+}
+
+export async function hydrateSessionWithProfile(
+  session: NormalizedAuthResponse,
+): Promise<NormalizedAuthResponse> {
+  const user = await hydrateUserWithProfile(session.user);
+  return { ...session, user } satisfies NormalizedAuthResponse;
 }
 
 export async function serviceRoleSelect<T>(

@@ -73,14 +73,48 @@ create table profiles (
   phone text,
   role text not null default 'Membro' check (role in ('Owner', 'Admin', 'Membro')),
   created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone
+  updated_at timestamp with time zone default now()
 );
 
 alter table profiles enable row level security;
 
--- Permite que cada usuário atualize apenas seus próprios dados e impeça auto-promoções para cargos acima de Membro
-create policy "update own profile" on profiles for update using (auth.uid() = id) with check (role = 'Membro');
+-- Cria automaticamente um profile quando um usuário for registrado via Auth
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into public.profiles (id, full_name, role)
+  values (new.id, new.email::text, 'Membro')
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure public.handle_new_auth_user();
+
+-- Políticas básicas de RLS para leitura/edição de perfil
+create policy "select own profile" on profiles
+for select using (auth.uid() = id);
+
+create policy "insert own profile" on profiles
+for insert with check (auth.uid() = id);
+
+create policy "update own profile" on profiles
+for update using (auth.uid() = id)
+with check (role = 'Membro');
 ```
+
+### Configurando login por e-mail e senha
+
+1. No painel do Supabase, acesse **Authentication → Providers** e habilite o provedor **Email** com a opção de novos cadastros ativa. Configure confirmação de e-mail se desejar aprovar contas manualmente.
+2. Execute o bloco SQL acima no editor do Supabase para criar a tabela `profiles`, a função/trigger que gera o perfil automaticamente e as políticas básicas de RLS.
+3. Utilize uma Service Role Key apenas no backend. As rotas `/api/auth/signup` e `/api/auth/login` deste projeto conversam com o Auth REST API e usam a service key (via `supabaseFetch`) apenas no ambiente server-side para sincronizar o perfil sem expor a chave ao cliente.
+4. As credenciais permanecem exclusivamente no módulo de autenticação do Supabase (`auth.users`). O perfil recebe apenas dados públicos (nome, função), mantendo as senhas fora de qualquer tabela customizada.
 
 > Configure Row Level Security conforme a necessidade da sua aplicação. As rotas internas utilizam a service key do Supabase, portanto mantenha-a somente no servidor.
 
@@ -90,7 +124,7 @@ create policy "update own profile" on profiles for update using (auth.uid() = id
 - **Admin**: pode acessar o painel administrativo para gerenciar catálogo e membros, mas é redirecionado ao tentar abrir o módulo financeiro.
 - **Membro**: acessa apenas o dashboard operacional (ofertas internas, monitoradas e perfil), sem links para a área administrativa.
 
-> O fluxo de cadastro (`/signup`) cria usuários sempre como **Membro**. Promova contas para **Admin** ou **Owner** atualizando a coluna `role` da tabela `profiles` ou definindo `app_metadata.role` diretamente via painel do Supabase.
+> O fluxo de cadastro (`/signup`) cria usuários sempre como **Membro**. Promova contas para **Admin** ou **Owner** atualizando a coluna `role` na tabela `profiles` via painel do Supabase ou através de uma função server-side protegida pela service role key.
 
 ### Variáveis de ambiente
 

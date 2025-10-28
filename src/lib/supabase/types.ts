@@ -43,12 +43,20 @@ export interface MonitoredOfferTrackingRow {
   created_at: string;
 }
 
+export type OfferRole = 'Owner' | 'Admin' | 'Membro';
+
+export interface SupabaseProfile {
+  id: string;
+  full_name: string | null;
+  role: OfferRole;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface SupabaseAuthUser {
   id: string;
   email: string;
-  role?: OfferRole;
+  role: OfferRole;
   full_name?: string | null;
   avatar_url?: string | null;
 }
-
-export type OfferRole = 'Owner' | 'Admin' | 'Membro';
