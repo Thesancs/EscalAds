@@ -94,7 +94,7 @@ As rotas de autenticação utilizam os endpoints REST do Supabase. O service rol
 | `npm run format` | Executa `prettier --check .`. |
 | `npm run format:fix` | Executa `prettier --write .`. |
 
-> Instale `eslint`, `prettier` e `husky` como dependências de desenvolvimento (`npm install --save-dev eslint prettier husky`) para utilizar os scripts de lint/ formatação e o gancho pré-commit.
+> Instale `eslint` e `prettier` como dependências de desenvolvimento (`npm install --save-dev eslint prettier`) para utilizar os scripts de lint/formatação.
 
 ## Fluxos importantes
 
