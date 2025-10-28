@@ -12,7 +12,7 @@ EscalAds é um painel focado em monitoramento inteligente de ofertas. A aplicaç
 - **Dashboard unificado** com totais, destaques e CTA para rotinas automáticas (`updateAllOffersDaily`).
 - **UI construída com Tailwind + shadcn/ui**, incluindo formulários validados com React Hook Form + Zod.
 - **Pipeline CI** em GitHub Actions executando lint e verificação de tipos.
-- **Husky + Prettier + ESLint** pré-configurados para manter o padrão de código.
+- **Controle de acesso por níveis (Owner, Admin, Membro)** aplicado em layouts, menus e permissões do dashboard.
 
 ## Requisitos
 
@@ -66,9 +66,31 @@ create table monitored_offer_tracking (
   status text not null,
   created_at timestamp with time zone default now()
 );
+
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  phone text,
+  role text not null default 'Membro' check (role in ('Owner', 'Admin', 'Membro')),
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone
+);
+
+alter table profiles enable row level security;
+
+-- Permite que cada usuário atualize apenas seus próprios dados e impeça auto-promoções para cargos acima de Membro
+create policy "update own profile" on profiles for update using (auth.uid() = id) with check (role = 'Membro');
 ```
 
 > Configure Row Level Security conforme a necessidade da sua aplicação. As rotas internas utilizam a service key do Supabase, portanto mantenha-a somente no servidor.
+
+### Mapeamento de papéis de acesso
+
+- **Owner**: visão completa do painel, incluindo área financeira e gestão de membros.
+- **Admin**: pode acessar o painel administrativo para gerenciar catálogo e membros, mas é redirecionado ao tentar abrir o módulo financeiro.
+- **Membro**: acessa apenas o dashboard operacional (ofertas internas, monitoradas e perfil), sem links para a área administrativa.
+
+> O fluxo de cadastro (`/signup`) cria usuários sempre como **Membro**. Promova contas para **Admin** ou **Owner** atualizando a coluna `role` da tabela `profiles` ou definindo `app_metadata.role` diretamente via painel do Supabase.
 
 ### Variáveis de ambiente
 
@@ -126,6 +148,8 @@ Essa função percorre todas as ofertas internas e monitoradas, obtém a contage
 
 As rotas `/api/auth/login`, `/api/auth/signup`, `/api/auth/logout` e `/api/auth/session` encapsulam a comunicação com o Supabase Auth. Os tokens são salvos em cookies HTTP-only (`sb-access-token`, `sb-refresh-token`) e o contexto `AuthProvider` (`src/lib/auth-context.tsx`) disponibiliza `signIn`, `signUp`, `signOut` e `refresh` para os componentes client.
 
+Durante o cadastro (`signUp`), o backend envia metadados com `role = 'Membro'`. A leitura da sessão normaliza o valor priorizando `app_metadata.role`, depois `user_metadata.role` e, por fim, aplicando o padrão `Membro`. Ajuste o papel de cada usuário direto no Supabase para liberar privilégios elevados sem alterações no código.
+
 ## Estrutura de pastas relevante
 
 ```
@@ -151,7 +175,6 @@ src/
 
 - ESLint configurado em `.eslintrc.js` (ordem de imports e regras padrão Next).
 - Prettier configurado em `.prettierrc`.
-- Husky pré-configurado com um gancho `pre-commit` executando `npm run lint`.
 - Pipeline CI em `.github/workflows/ci.yml`.
 
 ## Próximos passos sugeridos

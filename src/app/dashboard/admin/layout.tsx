@@ -4,7 +4,7 @@
 import { type PropsWithChildren, useState, useEffect } from "react";
 import { AppHeader } from "@/app/dashboard/_components/header";
 import { useAuth } from '@/lib/auth-context';
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -17,18 +17,22 @@ export default function AdminLayout({ children }: PropsWithChildren) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, loading, role } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const isFinanceRoute = pathname.startsWith('/dashboard/admin/financeiro');
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/login');
-      } else if (role !== 'Owner') {
-        router.push('/dashboard');
+        router.replace('/login');
+      } else if (role === 'Membro') {
+        router.replace('/dashboard');
+      } else if (role === 'Admin' && isFinanceRoute) {
+        router.replace('/dashboard/admin');
       }
     }
-  }, [user, loading, role, router]);
-  
-  if (loading || !user || role !== 'Owner') {
+  }, [user, loading, role, router, isFinanceRoute]);
+
+  if (loading || !user || role === 'Membro' || (role === 'Admin' && isFinanceRoute)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

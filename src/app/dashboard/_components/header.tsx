@@ -55,7 +55,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
 
       <div className="flex items-center gap-4">
-        {role === 'Owner' && (
+        {(role === 'Owner' || role === 'Admin') && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -8,6 +8,7 @@ import {
   BookCopy,
   ArrowLeft
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import * as React from 'react';
@@ -19,12 +20,21 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/lib/auth-context';
+import type { OfferRole } from '@/lib/supabase/types';
 
-const adminMenuItems = [
-  { href: '/dashboard/admin', label: 'Controle Geral', icon: LayoutDashboard },
-  { href: '/dashboard/admin/financeiro', label: 'Financeiro', icon: Banknote },
-  { href: '/dashboard/admin/membros', label: 'Membros', icon: Users },
-  { href: '/dashboard/admin/catalogo', label: 'Catálogo', icon: BookCopy },
+interface AdminMenuItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  roles: OfferRole[];
+}
+
+const adminMenuItems: AdminMenuItem[] = [
+  { href: '/dashboard/admin', label: 'Controle Geral', icon: LayoutDashboard, roles: ['Owner', 'Admin'] },
+  { href: '/dashboard/admin/financeiro', label: 'Financeiro', icon: Banknote, roles: ['Owner'] },
+  { href: '/dashboard/admin/membros', label: 'Membros', icon: Users, roles: ['Owner', 'Admin'] },
+  { href: '/dashboard/admin/catalogo', label: 'Catálogo', icon: BookCopy, roles: ['Owner', 'Admin'] },
 ];
 
 interface AdminSidebarNavProps {
@@ -33,13 +43,19 @@ interface AdminSidebarNavProps {
 
 export function AdminSidebarNav({ isMobile = false }: AdminSidebarNavProps) {
   const pathname = usePathname();
+  const { role } = useAuth();
+
+  const items = React.useMemo(() => {
+    if (!role || role === 'Membro') return [];
+    return adminMenuItems.filter(item => item.roles.includes(role));
+  }, [role]);
 
   const isActive = React.useCallback(
     (href: string) => pathname === href,
     [pathname]
   );
-  
-  const NavLink = ({ item, active }: { item: typeof adminMenuItems[0], active: boolean }) => (
+
+  const NavLink = ({ item, active }: { item: AdminMenuItem; active: boolean }) => (
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
@@ -58,7 +74,7 @@ export function AdminSidebarNav({ isMobile = false }: AdminSidebarNavProps) {
     </Link>
   );
 
-  const MobileNavLink = ({ item, active }: { item: typeof adminMenuItems[0], active: boolean }) => (
+  const MobileNavLink = ({ item, active }: { item: AdminMenuItem; active: boolean }) => (
      <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
@@ -79,7 +95,7 @@ export function AdminSidebarNav({ isMobile = false }: AdminSidebarNavProps) {
   if (isMobile) {
     return (
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-            {adminMenuItems.map((item) => (
+            {items.map((item) => (
                 <li key={item.href}>
                     <MobileNavLink item={item} active={isActive(item.href)} />
                 </li>
@@ -99,7 +115,7 @@ export function AdminSidebarNav({ isMobile = false }: AdminSidebarNavProps) {
     <TooltipProvider delayDuration={0}>
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         <ul className="space-y-2">
-          {adminMenuItems.map((item) => {
+          {items.map((item) => {
             const active = isActive(item.href);
             return (
               <li key={item.href}>

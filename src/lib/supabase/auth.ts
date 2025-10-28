@@ -35,15 +35,41 @@ export async function signInWithPassword(email: string, password: string) {
   return normalizeAuthResponse(data);
 }
 
-export async function signUpWithPassword(email: string, password: string, metadata?: Record<string, unknown>) {
+const VALID_ROLES: OfferRole[] = ['Owner', 'Admin', 'Membro'];
+
+function parseRole(value: unknown): OfferRole | undefined {
+  if (typeof value !== 'string') return undefined;
+  return VALID_ROLES.includes(value as OfferRole) ? (value as OfferRole) : undefined;
+}
+
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  metadata?: Record<string, unknown>,
+) {
   const { url, anonKey } = assertSupabaseEnv();
+  const requestedMetadata = { ...(metadata ?? {}) };
+  const requestedRole =
+    'role' in requestedMetadata ? parseRole(requestedMetadata.role) : undefined;
+
+  const normalizedMetadata = {
+    ...requestedMetadata,
+    role: requestedRole ?? ('Membro' as OfferRole),
+  };
+
   const response = await fetch(`${url}/auth/v1/signup`, {
     method: 'POST',
     headers: {
       apikey: anonKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password, data: metadata ?? {} }),
+    body: JSON.stringify({
+      email,
+      password,
+      data: {
+        ...normalizedMetadata,
+      },
+    }),
   });
 
   if (!response.ok) {
@@ -168,9 +194,9 @@ export type NormalizedAuthResponse = {
 
 function normalizeUser(user: AuthResponse['user']): SupabaseAuthUser {
   const role =
-    (user.app_metadata?.role as OfferRole | undefined) ||
-    (user.user_metadata?.role as OfferRole | undefined) ||
-    'Membro';
+    parseRole(user.app_metadata?.role) ||
+    parseRole(user.user_metadata?.role) ||
+    ('Membro' as OfferRole);
 
   return {
     id: user.id,
