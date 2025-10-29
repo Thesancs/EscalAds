@@ -141,6 +141,9 @@ Crie um arquivo `.env.local` com as chaves abaixo:
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+AD_LIBRARY_SCRAPER_URL=https://seu-endpoint-de-scraping.example.com/ad-count
+# Opcional: informe um token/bearer para proteger o endpoint
+# AD_LIBRARY_SCRAPER_TOKEN=seu-token
 ```
 
 As rotas de autenticação utilizam os endpoints REST do Supabase. O service role é usado apenas para operações server-side (tracking, atualizações).
@@ -183,7 +186,7 @@ import { updateAllOffersDaily } from '@/lib/jobs/update-all-offers-daily';
 await updateAllOffersDaily(new Date().toISOString().split('T')[0]);
 ```
 
-Essa função percorre todas as ofertas escaladas e monitoradas, obtém a contagem do dia (mock configurado) e registra o histórico com cálculo de variação e status.
+Essa função percorre todas as ofertas escaladas e monitoradas, consulta o serviço externo configurado em `AD_LIBRARY_SCRAPER_URL` para obter a contagem de anúncios (caindo para mocks apenas se o serviço não estiver disponível) e registra o histórico com cálculo de variação e status.
 
 ## Autenticação
 

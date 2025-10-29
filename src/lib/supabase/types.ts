@@ -69,3 +69,32 @@ export interface SupabaseAuthUser {
   full_name?: string | null;
   avatar_url?: string | null;
 }
+
+export interface SupabaseAuthAdminUser {
+  id: string;
+  email: string | null;
+  created_at: string;
+  last_sign_in_at: string | null;
+  email_confirmed_at?: string | null;
+  banned_until?: string | null;
+  app_metadata?: Record<string, unknown> | null;
+  user_metadata?: Record<string, unknown> | null;
+}
+
+export interface SupabaseAuthAdminListResponse {
+  users: SupabaseAuthAdminUser[];
+  next_page?: string | null;
+  nextPage?: string | null;
+}
+
+export interface AdminProfile {
+  id: string;
+  full_name: string | null;
+  role: OfferRole;
+  email: string | null;
+  status: 'ativo' | 'trial' | 'suspenso';
+  avatar_url: string | null;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+  tags: string[];
+}

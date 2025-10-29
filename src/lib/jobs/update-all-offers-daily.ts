@@ -1,14 +1,23 @@
 import { serviceRoleSelect, serviceRoleInsert } from '@/lib/supabase/auth';
 import type { Offer, MonitoredOffer, OfferTrackingRow, MonitoredOfferTrackingRow } from '@/lib/supabase/types';
 import { determineStatus, calculateVariation } from '@/lib/monitoring/status';
+import { tryFetchAdsCountFromSource } from '@/lib/monitoring/ad-library';
 
 async function getTodayAdCount(offer: Offer): Promise<number> {
-  // Placeholder implementation. Replace with an integration to your data source.
+  const fetched = await tryFetchAdsCountFromSource(offer.ads_page_url ?? undefined);
+  if (typeof fetched === 'number') {
+    return fetched;
+  }
+
   return offer.total_ads_today;
 }
 
-async function getTodayAdCountFromLibrary(_url: string): Promise<number> {
-  // Placeholder implementation for manual monitored offers.
+async function getTodayAdCountFromLibrary(url: string): Promise<number> {
+  const fetched = await tryFetchAdsCountFromSource(url);
+  if (typeof fetched === 'number') {
+    return fetched;
+  }
+
   return Math.floor(Math.random() * 200);
 }
 
