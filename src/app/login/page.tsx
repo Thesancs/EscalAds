@@ -24,8 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { signInWithEmailAndPassword, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
+import { useAuth } from '@/lib/auth-context';
 import { Loader2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -42,6 +41,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -55,20 +55,20 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Set persistence based on the "remember me" checkbox
-      await setPersistence(auth, values.rememberMe ? browserLocalPersistence : browserSessionPersistence);
-      
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await signIn(values);
       toast({
         title: 'Login bem-sucedido!',
         description: 'Redirecionando para o seu dashboard...',
       });
       router.push('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Erro ao fazer login',
-        description: 'E-mail ou senha inválidos. Por favor, tente novamente.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'E-mail ou senha inválidos. Por favor, tente novamente.',
       });
     } finally {
       setIsLoading(false);

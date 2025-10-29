@@ -24,8 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { useAuth } from '@/lib/auth-context';
 import { Loader2, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -48,6 +47,7 @@ export default function SignupPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,35 +63,21 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password
-      );
-      const user = userCredential.user;
-      
-      // Adiciona o nome de usuário ao perfil
-      await updateProfile(user, {
-        displayName: values.username,
+      await signUp({
+        email: values.email,
+        password: values.password,
+        full_name: values.username,
       });
-
-      // HACK: For development, we'll give the first user the 'Owner' role.
-      // In a real app, this should be done via a secure backend function.
-      // We force a token refresh to get the custom claim.
-      await user.getIdToken(true);
-
-
       toast({
         title: 'Conta Criada!',
         description: 'Sua conta foi criada com sucesso. Redirecionando...',
       });
       router.push('/dashboard');
-    } catch (error: any) {
-       let errorMessage = 'Ocorreu um erro desconhecido.';
-      if (error.code === 'auth/email-already-in-use') {
+    } catch (error: unknown) {
+      let errorMessage = 'Ocorreu um erro desconhecido.';
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('already registered')) {
         errorMessage = 'Este endereço de e-mail já está em uso.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'A senha é muito fraca. Tente uma mais forte.';
       }
       toast({
         variant: 'destructive',

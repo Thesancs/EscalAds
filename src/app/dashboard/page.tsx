@@ -1,352 +1,205 @@
-
-'use client';
-
+import { fetchMonitoredOffers, fetchOffers } from '@/lib/supabase/queries';
+import type { Offer, MonitoredOffer } from '@/lib/supabase/types';
+import { describeStatus } from '@/lib/monitoring/status';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  ArrowRight,
-  CheckCircle,
-  Flame,
-  Star,
-  Ticket,
-  TrendingUp,
-} from 'lucide-react';
 import Link from 'next/link';
-import React from 'react';
 
-const validadas48h = [
-  {
-    id: '1',
-    title: 'Método de 7 Segundos',
-    veredicto: 'Priorize',
-    veredictoColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-    porque:
-      'Alto volume de novos criativos e expansão para outros mercados. O momento de testar é agora.',
-    sinais: {
-      anuncios: '670+',
-      tendencia: 'Alta',
-      ticket: 'R$297',
-    },
-    minerador: {
-      nome: 'João P.',
-      avatarUrl: 'https://picsum.photos/seed/joao/40/40',
-      hint: 'person'
-    },
-  },
-  {
-    id: '2',
-    title: 'Bactéria Gordurosa',
-    veredicto: 'Teste',
-    veredictoColor: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    porque:
-      'Sinais de saturação no público principal, mas com bom ROAS. Vale o teste em um novo ângulo.',
-    sinais: {
-      anuncios: '180',
-      tendencia: 'Estável',
-      ticket: 'R$467',
-    },
-    minerador: {
-      nome: 'Maria S.',
-      avatarUrl: 'https://picsum.photos/seed/maria/40/40',
-      hint: 'person'
-    },
-  },
-];
+interface CombinedRow {
+  id: string;
+  name: string;
+  ads: number;
+  variation: number | null;
+  status: Offer['status'];
+  source: 'offer' | 'monitored';
+}
 
-const tendenciasComunidade = [
-    {
-    id: '3',
-    title: '100 Receitas Ricas em Proteínas',
-    veredicto: 'Evite',
-    veredictoColor: 'bg-red-500/20 text-red-400 border-red-500/30',
-    porque:
-      'Apesar da queda, o ticket baixo pode ser uma barreira de entrada menor para novos públicos.',
-    sinais: {
-      anuncios: '140',
-      tendencia: 'Queda',
-      ticket: 'R$30',
-    },
-    minerador: {
-      nome: 'Lucas T.',
-      avatarUrl: 'https://picsum.photos/seed/lucas/40/40',
-      hint: 'person'
-    },
-  },
-  {
-    id: '5',
-    title: 'Kit de Beleza Natural',
-    veredicto: 'Teste',
-    veredictoColor: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    porque:
-      'Mercado em alta com público fiel e baixa concorrência em anúncios de vídeo. Bom para testar.',
-    sinais: {
-      anuncios: '95',
-      tendencia: 'Estável',
-      ticket: 'R$197',
-    },
-    minerador: {
-      nome: 'Sofia L.',
-      avatarUrl: 'https://picsum.photos/seed/sofia/40/40',
-      hint: 'person'
-    },
-  },
-  {
-    id: '6',
-    title: 'Curso de Design UI/UX',
-    veredicto: 'Priorize',
-    veredictoColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-    porque:
-      'Demanda crescente por profissionais de UX, com poucos players consolidados no nicho de VSL.',
-    sinais: {
-      anuncios: '250+',
-      tendencia: 'Alta',
-      ticket: 'R$697',
-    },
-    minerador: {
-      nome: 'Pedro A.',
-      avatarUrl: 'https://picsum.photos/seed/pedro/40/40',
-      hint: 'person'
-    },
-  },
-];
+async function loadData() {
+  try {
+    const [offers, monitored] = await Promise.all([fetchOffers(), fetchMonitoredOffers()]);
+    return { offers, monitored, error: null as string | null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Não foi possível conectar ao Supabase.';
+    return { offers: [] as Offer[], monitored: [] as MonitoredOffer[], error: message };
+  }
+}
 
+function buildCombinedRows(offers: Offer[], monitored: MonitoredOffer[]): CombinedRow[] {
+  const offerRows: CombinedRow[] = offers.map((offer) => ({
+    id: offer.id,
+    name: offer.name,
+    ads: offer.total_ads_today,
+    variation: offer.variation_percent,
+    status: offer.status,
+    source: 'offer',
+  }));
 
-const recomendacaoEspecialista = {
-  id: '4',
-  title: 'Automação para SaaS',
-  veredicto: 'Priorize',
-  veredictoColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-  porque:
-    'Solução B2B com ticket alto e demanda crescente. Pouca concorrência e alto potencial de escala no Brasil.',
-  sinais: {
-    anuncios: '320',
-    tendencia: 'Crescente',
-    ticket: 'R$997',
-  },
-};
+  const monitoredRows: CombinedRow[] = monitored.map((offer) => ({
+    id: offer.id,
+    name: offer.offer_name ?? offer.offer_url,
+    ads: offer.last_ads_count ?? 0,
+    variation: offer.last_variation,
+    status: offer.status,
+    source: 'monitored',
+  }));
 
-const mineracaoHoje = [
-  { id: 1, nome: 'Protocolo Zero Cal', minerador: '@ana.martins', status: 'Em triagem' },
-  { id: 2, nome: 'Voz Mestra IA', minerador: '@carlos.roberto', status: 'Em validação' },
-  { id: 3, nome: 'Gota Seca Max', minerador: '@bia_oliveira', status: 'Em triagem' },
-];
+  return [...offerRows, ...monitoredRows];
+}
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { offers, monitored, error } = await loadData();
+  const combined = buildCombinedRows(offers, monitored);
+
+  const totalOffers = offers.length;
+  const totalMonitored = monitored.length;
+  const totalAds = combined.reduce((acc, item) => acc + (item.ads ?? 0), 0);
+  const scaling = combined.filter((item) => item.status === 'escalando');
+  const falling = combined.filter((item) => item.status === 'caindo');
+  const topGrowth = [...combined]
+    .filter((row) => typeof row.variation === 'number')
+    .sort((a, b) => (b.variation ?? 0) - (a.variation ?? 0))
+    .slice(0, 4);
+
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Hoje na Scalify
-        </h1>
-        <p className="text-muted-foreground max-w-2xl">
-          O que a comunidade minerou e o especialista validou.
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Inteligência de anúncios</h1>
+        <p className="text-muted-foreground max-w-3xl">
+          Visão consolidada do volume de anúncios ativos, variações percentuais e status diário das suas ofertas escaladas e links monitorados.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Coluna Principal */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-              Validadas nas últimas 48h
-            </h2>
-            <p className="text-muted-foreground mb-4 max-w-3xl">
-              Nossos especialistas confirmaram o potencial. Analise e prepare seu teste.
+      {error ? (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle>Supabase não configurado</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              {error}. Configure as variáveis <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> para carregar os dados em tempo real.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {validadas48h.map((oferta) => (
-                <Card
-                  key={oferta.id}
-                  className="glassmorphic flex flex-col h-full transition-all duration-300 hover:border-primary/80 overflow-hidden group"
-                >
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <Badge variant="secondary" className="flex items-center gap-2 bg-black/50 text-white backdrop-blur-sm">
-                        <CheckCircle className="h-4 w-4 text-primary" />
-                        Validado pelo Especialista
-                      </Badge>
-                       <Badge className={oferta.veredictoColor}>
-                        {oferta.veredicto}
-                      </Badge>
-                    </div>
-                     <CardTitle className="text-xl font-bold text-foreground pt-4">{oferta.title}</CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="flex-grow space-y-4">
-                     <div className="space-y-2 text-sm text-muted-foreground">
-                          <div className="flex items-center justify-between" title="Indicador de verba e tração">
-                              <span className="flex items-center gap-2"><Flame className="h-4 w-4" /> Anúncios ativos:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.anuncios}</span>
-                          </div>
-                          <div className="flex items-center justify-between" title="Tendência dos últimos 7 dias">
-                              <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Tendência 7d:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.tendencia}</span>
-                          </div>
-                          <div className="flex items-center justify-between" title="Preço praticado recentemente">
-                              <span className="flex items-center gap-2"><Ticket className="h-4 w-4"/> Ticket médio:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.ticket}</span>
-                          </div>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-foreground mb-1">Por que agora?</h4>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{oferta.porque}</p>
-                      </div>
-                  </CardContent>
-
-                  <CardFooter className="grid grid-cols-2 gap-2">
-                     <Button asChild className="w-full">
-                          <Link href={`/dashboard/ofertas/${oferta.id}`}>Ver Detalhes</Link>
-                      </Button>
-                      <Button variant="outline" className="w-full">
-                          <Star className="mr-2 h-4 w-4" />
-                          Salvar
-                      </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </div>
-          
-           {/* Nova Seção: Tendências da Comunidade */}
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-              Tendências da Comunidade
-            </h2>
-            <p className="text-muted-foreground mb-4 max-w-3xl">
-              Ofertas que estão ganhando tração e sendo discutidas pela comunidade.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {tendenciasComunidade.map((oferta) => (
-                <Card
-                  key={oferta.id}
-                  className="glassmorphic flex flex-col h-full transition-all duration-300 hover:border-primary/80 overflow-hidden group"
-                >
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                       <Badge variant="secondary" className="flex items-center gap-2 bg-black/50 text-white backdrop-blur-sm">
-                        <TrendingUp className="h-4 w-4 text-primary" />
-                        Em Alta na Comunidade
-                      </Badge>
-                       <Badge className={oferta.veredictoColor}>
-                        {oferta.veredicto}
-                      </Badge>
-                    </div>
-                     <CardTitle className="text-xl font-bold text-foreground pt-4">{oferta.title}</CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="flex-grow space-y-4">
-                     <div className="space-y-2 text-sm text-muted-foreground">
-                          <div className="flex items-center justify-between" title="Indicador de verba e tração">
-                              <span className="flex items-center gap-2"><Flame className="h-4 w-4" /> Anúncios ativos:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.anuncios}</span>
-                          </div>
-                          <div className="flex items-center justify-between" title="Tendência dos últimos 7 dias">
-                              <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Tendência 7d:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.tendencia}</span>
-                          </div>
-                          <div className="flex items-center justify-between" title="Preço praticado recentemente">
-                              <span className="flex items-center gap-2"><Ticket className="h-4 w-4"/> Ticket médio:</span>
-                              <span className="font-bold text-foreground">{oferta.sinais.ticket}</span>
-                          </div>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-foreground mb-1">Por que agora?</h4>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{oferta.porque}</p>
-                      </div>
-                  </CardContent>
-
-                  <CardFooter className="grid grid-cols-2 gap-2">
-                     <Button asChild className="w-full">
-                          <Link href={`/dashboard/ofertas/${oferta.id}`}>Ver Detalhes</Link>
-                      </Button>
-                      <Button variant="outline" className="w-full">
-                          <Star className="mr-2 h-4 w-4" />
-                          Salvar
-                      </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card className="glassmorphic">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ofertas escaladas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{totalOffers}</p>
+                <p className="text-sm text-muted-foreground">com contagem diária monitorada</p>
+              </CardContent>
+            </Card>
+            <Card className="glassmorphic">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Links monitorados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{totalMonitored}</p>
+                <p className="text-sm text-muted-foreground">cadastrados manualmente</p>
+              </CardContent>
+            </Card>
+            <Card className="glassmorphic">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Anúncios ativos hoje</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{totalAds}</p>
+                <p className="text-sm text-muted-foreground">somando ofertas escaladas e monitoradas</p>
+              </CardContent>
+            </Card>
+            <Card className="glassmorphic">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Status geral</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center gap-6">
+                <div>
+                  <p className="text-2xl font-bold text-emerald-400">{scaling.length}</p>
+                  <p className="text-xs text-muted-foreground">escalando</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-400">{combined.length - scaling.length - falling.length}</p>
+                  <p className="text-xs text-muted-foreground">estáveis</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-400">{falling.length}</p>
+                  <p className="text-xs text-muted-foreground">caindo</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-        </div>
+          <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
+            <Card className="glassmorphic">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-xl">Variações de destaque</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Ofertas com maior crescimento percentual nas últimas atualizações.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/dashboard/offers">Ver escaladas</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/dashboard/monitored">Ver monitoradas</Link>
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {topGrowth.length === 0 ? (
+                  <p className="text-muted-foreground">Nenhuma atualização registrada ainda.</p>
+                ) : (
+                  topGrowth.map((row) => {
+                    const descriptor = describeStatus(row.status);
+                    const formattedVariation =
+                      row.variation !== null
+                        ? `${row.variation > 0 ? '+' : ''}${row.variation.toFixed(2)}%`
+                        : '—';
+                    return (
+                      <div key={`${row.source}-${row.id}`} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 px-4 py-3">
+                        <div>
+                          <p className="font-semibold text-foreground">{row.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {row.source === 'offer' ? 'Oferta escalada' : 'Link monitorado'} • {row.ads} anúncios ativos
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={descriptor.tone === 'success' ? 'default' : descriptor.tone === 'destructive' ? 'destructive' : 'secondary'}>
+                            {descriptor.label}
+                          </Badge>
+                          <p className="text-sm font-semibold text-emerald-400">{formattedVariation}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Coluna Lateral */}
-        <div className="flex flex-col gap-8">
-            {/* Recomendação do Especialista */}
-            <div>
-                 <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">
-                    Recomendação do Especialista
-                 </h2>
-                 <Card className="glassmorphic">
-                     <CardHeader>
-                         <div className="flex justify-between items-center">
-                            <CardTitle className="text-xl font-bold">{recomendacaoEspecialista.title}</CardTitle>
-                             <Badge className={recomendacaoEspecialista.veredictoColor}>
-                                {recomendacaoEspecialista.veredicto}
-                            </Badge>
-                         </div>
-                     </CardHeader>
-                     <CardContent>
-                          <h4 className="font-semibold text-sm text-foreground mb-1">Por que agora?</h4>
-                          <p className="text-sm text-muted-foreground leading-relaxed">{recomendacaoEspecialista.porque}</p>
-                     </CardContent>
-                     <CardFooter>
-                         <Button asChild className="w-full">
-                             <Link href={`/dashboard/ofertas/${recomendacaoEspecialista.id}`}>
-                                Ver Detalhes <ArrowRight className="ml-2 h-4 w-4" />
-                             </Link>
-                         </Button>
-                     </CardFooter>
-                 </Card>
-            </div>
-             {/* Mineração de Hoje */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">
-                    Mineração de Hoje
-                </h2>
-                <Card className="glassmorphic">
-                    <CardContent className="p-4">
-                        <Table>
-                            <TableBody>
-                                {mineracaoHoje.map((item) => (
-                                    <TableRow key={item.id} className="border-b-white/10">
-                                        <TableCell className="font-medium text-foreground py-3">
-                                            <Link href="#" className="hover:underline">{item.nome}</Link>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-right py-3">{item.minerador}</TableCell>
-                                        <TableCell className="text-right py-3">
-                                             <Badge variant={item.status === 'Em validação' ? 'default' : 'secondary'} className="capitalize text-xs whitespace-nowrap">
-                                                {item.status}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                    <CardFooter className="p-2">
-                        <Button variant="ghost" size="sm" className="w-full text-primary hover:text-primary">
-                            Ver Fila Completa <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-        </div>
-      </div>
+            <Card className="glassmorphic">
+              <CardHeader>
+                <CardTitle className="text-xl">Próximos passos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                  Configure uma rotina diária (cron job ou Supabase Edge Function) para chamar <code>updateAllOffersDaily</code> e manter as variações atualizadas automaticamente.
+                </p>
+                <p>
+                  Utilize o botão “Atualizar contagem” em cada listagem para registrar coletas manuais durante o dia.
+                </p>
+                <p>
+                  As variações maiores ou iguais a 10% são marcadas como <span className="text-emerald-400 font-medium">escalando</span>, enquanto quedas de -10% sinalizam <span className="text-red-400 font-medium">caindo</span>.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

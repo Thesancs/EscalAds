@@ -13,9 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
-import { useAuth } from '@/lib/firebase';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import {
   Tooltip,
@@ -29,15 +27,15 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
-  const { user, role } = useAuth();
+  const { user, role, signOut } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await signOut();
     router.push('/login');
   };
-  
-  const getInitials = (name: string | null) => {
+
+  const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
@@ -57,7 +55,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
 
 
       <div className="flex items-center gap-4">
-        {role === 'Owner' && (
+        {(role === 'Owner' || role === 'Admin') && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -81,8 +79,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               className="relative h-10 w-10 rounded-full"
             >
               <Avatar className="h-10 w-10 border">
-                <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName ?? 'Usuário'} data-ai-hint="person avatar"/>
-                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.full_name ?? 'Usuário'} data-ai-hint="person avatar"/>
+                <AvatarFallback>{getInitials(user?.full_name)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -91,10 +89,8 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
               <>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || 'Usuário'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
+                    <p className="text-sm font-medium leading-none">{user.full_name || 'Usuário'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

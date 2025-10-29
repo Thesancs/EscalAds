@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import Image from 'next/image';
-import { SidebarNav } from './sidebar-nav';
+import { SidebarNav } from './_components/sidebar-nav';
 import { usePathname } from 'next/navigation';
 import { AdminSidebarNav } from './admin/_components/admin-sidebar-nav';
 

@@ -1,166 +1,96 @@
-
-'use client';
-
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { MoreVertical, PlusCircle } from 'lucide-react';
-import Image from 'next/image';
-import { useState } from 'react';
-import { type Oferta, ofertas as initialOfertas } from '@/lib/ofertas-data';
+import { fetchOffers } from '@/lib/supabase/queries';
+import type { Offer } from '@/lib/supabase/types';
+import { describeStatus } from '@/lib/monitoring/status';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { OfferFormDialog } from './_components/offer-form-dialog';
+import Image from 'next/image';
+import { CreateOfferForm } from './create-offer-form';
 
-
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case 'escalando':
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
-    case 'estável':
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-    case 'queda':
-      return 'bg-red-500/20 text-red-400 border-red-500/30';
-    default:
-      return 'secondary';
+async function loadOffers(): Promise<{ offers: Offer[]; error?: string }> {
+  try {
+    const offers = await fetchOffers();
+    return { offers };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Não foi possível carregar as ofertas.';
+    return { offers: [], error: message };
   }
-};
+}
 
-
-export default function CatalogoAdminPage() {
-  const [ofertas, setOfertas] = useState<Oferta[]>(initialOfertas);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedOferta, setSelectedOferta] = useState<Oferta | undefined>(undefined);
-
-  const handleSave = (ofertaToSave: Oferta) => {
-    if (selectedOferta) {
-      // Edit
-      setOfertas(ofertas.map(o => o.id === ofertaToSave.id ? ofertaToSave : o));
-    } else {
-      // Add
-      setOfertas([...ofertas, { ...ofertaToSave, id: String(Date.now()) }]);
-    }
-    setIsDialogOpen(false);
-    setSelectedOferta(undefined);
-  };
-  
-  const handleOpenDialog = (oferta?: Oferta) => {
-    setSelectedOferta(oferta);
-    setIsDialogOpen(true);
-  }
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedOferta(undefined);
-  }
-
+export default async function CatalogoAdminPage() {
+  const { offers, error } = await loadOffers();
 
   return (
     <div className="container mx-auto max-w-7xl py-8 animate-fade-in space-y-8">
+      <CreateOfferForm />
+
       <Card className="glassmorphic">
         <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <CardTitle>Gerenciamento de Catálogo</CardTitle>
-                <CardDescription>
-                  Adicione, edite ou remova as ofertas da plataforma.
-                </CardDescription>
-              </div>
-              <Button onClick={() => handleOpenDialog()}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Adicionar Oferta
-              </Button>
-          </div>
+          <CardTitle>Ofertas escaladas cadastradas</CardTitle>
+          <CardDescription>
+            Visualize, audite e mantenha organizado o inventário de ofertas escaladas disponíveis para o time.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Oferta</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Formato</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ofertas.map((oferta) => (
-                <TableRow key={oferta.id} className="hover:bg-muted/10">
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                        <Image 
-                            src={oferta.imageUrl} 
-                            alt={oferta.title} 
-                            width={40} 
-                            height={40} 
-                            className="rounded-md object-cover"
-                            data-ai-hint={oferta.imageHint}
-                        />
-                      <span className="font-medium">{oferta.title}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {oferta.type}
-                  </TableCell>
-                   <TableCell className="text-muted-foreground space-x-1">
-                    {oferta.format.map(f => (
-                        <Badge key={f} variant="outline" className="border-primary/50 text-primary">{f}</Badge>
-                    ))}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`capitalize ${getStatusBadgeVariant(oferta.status)}`}>
-                      {oferta.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenDialog(oferta)}>
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-400 focus:text-red-500">
-                          Remover
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {error ? (
+            <p className="text-muted-foreground">{error}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Oferta</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Nicho</TableHead>
+                  <TableHead>Plataforma</TableHead>
+                  <TableHead>País</TableHead>
+                  <TableHead>Anúncios hoje</TableHead>
+                  <TableHead>Variação</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {offers.map((offer) => {
+                  const descriptor = describeStatus(offer.status);
+                  return (
+                    <TableRow key={offer.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="overflow-hidden rounded-md bg-primary/20">
+                            <Image src="/placeholder.svg" alt="Capa" width={40} height={40} className="object-cover" />
+                          </div>
+                          <span className="font-medium text-foreground">{offer.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {offer.funnel_type ? <Badge variant="outline">{offer.funnel_type}</Badge> : '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{offer.niche ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{offer.platform ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{offer.country ?? '—'}</TableCell>
+                      <TableCell className="font-semibold">{offer.total_ads_today}</TableCell>
+                      <TableCell>
+                        {typeof offer.variation_percent === 'number' ? `${offer.variation_percent.toFixed(2)}%` : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={descriptor.tone === 'success' ? 'default' : descriptor.tone === 'destructive' ? 'destructive' : 'secondary'}>
+                          {descriptor.label}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {offers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                      Nenhuma oferta cadastrada.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
-
-      <OfferFormDialog
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        onSave={handleSave}
-        oferta={selectedOferta}
-      />
-
     </div>
   );
 }
