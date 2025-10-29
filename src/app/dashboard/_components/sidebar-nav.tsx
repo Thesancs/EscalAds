@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 
 const allMenuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Owner', 'Admin', 'Membro'] },
-  { href: '/dashboard/offers', label: 'Ofertas Internas', icon: Tag, roles: ['Owner', 'Admin', 'Membro'] },
+  { href: '/dashboard/offers', label: 'Ofertas Escaladas', icon: Tag, roles: ['Owner', 'Admin', 'Membro'] },
   { href: '/dashboard/monitored', label: 'Monitoradas', icon: Globe2, roles: ['Owner', 'Admin', 'Membro'] },
   { href: '/dashboard/admin', label: 'Administração', icon: Shield, roles: ['Owner', 'Admin'] },
   { href: '/dashboard/perfil', label: 'Perfil', icon: User, roles: ['Owner', 'Admin', 'Membro'] },

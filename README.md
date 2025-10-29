@@ -5,7 +5,7 @@ EscalAds é um painel focado em monitoramento inteligente de ofertas. A aplicaç
 ## Funcionalidades principais
 
 - **Autenticação Supabase** com persistência de sessão via cookies HTTP-only.
-- **Monitoramento diário de ofertas internas** com histórico (`offer_tracking`) e cálculo automático de variação percentual.
+- **Monitoramento diário de ofertas escaladas** com histórico (`offer_tracking`) e cálculo automático de variação percentual.
 - **Cadastro de links externos** (`monitored_offers`) com histórico próprio (`monitored_offer_tracking`).
 - **Status automático** (`escalando`, `estável`, `caindo`) baseado na variação das últimas coletas.
 - **Rotas de API** para atualizar contagens (`/api/offers/update-ads`, `/api/monitored/update`) e cadastrar links (`/api/monitored/add`).
@@ -29,6 +29,13 @@ create table offers (
   name text not null,
   platform text,
   country text,
+  summary text,
+  funnel_type text,
+  niche text,
+  is_monitored boolean not null default false,
+  checkout_url text,
+  ads_page_url text,
+  conversion_page_url text,
   total_ads_today integer not null default 0,
   variation_percent numeric,
   status text not null default 'estável',
@@ -122,7 +129,7 @@ with check (role = 'Membro');
 
 - **Owner**: visão completa do painel, incluindo área financeira e gestão de membros.
 - **Admin**: pode acessar o painel administrativo para gerenciar catálogo e membros, mas é redirecionado ao tentar abrir o módulo financeiro.
-- **Membro**: acessa apenas o dashboard operacional (ofertas internas, monitoradas e perfil), sem links para a área administrativa.
+- **Membro**: acessa apenas o dashboard operacional (ofertas escaladas, monitoradas e perfil), sem links para a área administrativa.
 
 > O fluxo de cadastro (`/signup`) cria usuários sempre como **Membro**. Promova contas para **Admin** ou **Owner** atualizando a coluna `role` na tabela `profiles` via painel do Supabase ou através de uma função server-side protegida pela service role key.
 
@@ -176,7 +183,7 @@ import { updateAllOffersDaily } from '@/lib/jobs/update-all-offers-daily';
 await updateAllOffersDaily(new Date().toISOString().split('T')[0]);
 ```
 
-Essa função percorre todas as ofertas internas e monitoradas, obtém a contagem do dia (mock configurado) e registra o histórico com cálculo de variação e status.
+Essa função percorre todas as ofertas escaladas e monitoradas, obtém a contagem do dia (mock configurado) e registra o histórico com cálculo de variação e status.
 
 ## Autenticação
 

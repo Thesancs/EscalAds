@@ -5,6 +5,19 @@ export async function fetchOffers() {
   return serviceRoleSelect<Offer>('offers', { order: { column: 'name' } });
 }
 
+export async function fetchOfferById(offerId: string) {
+  const [offer] = await serviceRoleSelect<Offer>('offers', {
+    match: { id: offerId },
+    limit: 1,
+  });
+
+  if (!offer) {
+    throw new Error('Oferta não encontrada.');
+  }
+
+  return offer;
+}
+
 export async function fetchOfferTracking(offerId: string) {
   return serviceRoleSelect<OfferTrackingRow>('offer_tracking', {
     match: { offer_id: offerId },

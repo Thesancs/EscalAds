@@ -66,7 +66,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Inteligência de anúncios</h1>
         <p className="text-muted-foreground max-w-3xl">
-          Visão consolidada do volume de anúncios ativos, variações percentuais e status diário das suas ofertas internas e links monitorados.
+          Visão consolidada do volume de anúncios ativos, variações percentuais e status diário das suas ofertas escaladas e links monitorados.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card className="glassmorphic">
               <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">Ofertas internas</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Ofertas escaladas</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{totalOffers}</p>
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{totalAds}</p>
-                <p className="text-sm text-muted-foreground">somando ofertas internas e externas</p>
+                <p className="text-sm text-muted-foreground">somando ofertas escaladas e monitoradas</p>
               </CardContent>
             </Card>
             <Card className="glassmorphic">
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button asChild variant="outline" size="sm">
-                    <Link href="/dashboard/offers">Ver internas</Link>
+                    <Link href="/dashboard/offers">Ver escaladas</Link>
                   </Button>
                   <Button asChild variant="outline" size="sm">
                     <Link href="/dashboard/monitored">Ver monitoradas</Link>
@@ -165,7 +165,7 @@ export default async function DashboardPage() {
                         <div>
                           <p className="font-semibold text-foreground">{row.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {row.source === 'offer' ? 'Oferta interna' : 'Link monitorado'} • {row.ads} anúncios ativos
+                            {row.source === 'offer' ? 'Oferta escalada' : 'Link monitorado'} • {row.ads} anúncios ativos
                           </p>
                         </div>
                         <div className="text-right">

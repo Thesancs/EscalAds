@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import { CreateOfferForm } from './create-offer-form';
 
 async function loadOffers(): Promise<{ offers: Offer[]; error?: string }> {
   try {
@@ -21,11 +22,13 @@ export default async function CatalogoAdminPage() {
 
   return (
     <div className="container mx-auto max-w-7xl py-8 animate-fade-in space-y-8">
+      <CreateOfferForm />
+
       <Card className="glassmorphic">
         <CardHeader>
-          <CardTitle>Catálogo de ofertas</CardTitle>
+          <CardTitle>Ofertas escaladas cadastradas</CardTitle>
           <CardDescription>
-            Visualize e audite as ofertas cadastradas no Supabase. Use a interface de monitoramento para atualizar contagens.
+            Visualize, audite e mantenha organizado o inventário de ofertas escaladas disponíveis para o time.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -36,6 +39,8 @@ export default async function CatalogoAdminPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Oferta</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Nicho</TableHead>
                   <TableHead>Plataforma</TableHead>
                   <TableHead>País</TableHead>
                   <TableHead>Anúncios hoje</TableHead>
@@ -56,6 +61,10 @@ export default async function CatalogoAdminPage() {
                           <span className="font-medium text-foreground">{offer.name}</span>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {offer.funnel_type ? <Badge variant="outline">{offer.funnel_type}</Badge> : '—'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{offer.niche ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{offer.platform ?? '—'}</TableCell>
                       <TableCell className="text-muted-foreground">{offer.country ?? '—'}</TableCell>
                       <TableCell className="font-semibold">{offer.total_ads_today}</TableCell>

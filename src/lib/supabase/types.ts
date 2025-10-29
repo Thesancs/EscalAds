@@ -1,5 +1,7 @@
 export type OfferStatus = 'escalando' | 'estável' | 'caindo';
 
+export type OfferFunnelType = 'VSL' | 'Quiz' | 'LP';
+
 export interface Offer {
   id: string;
   name: string;
@@ -8,6 +10,13 @@ export interface Offer {
   total_ads_today: number;
   variation_percent: number | null;
   status: OfferStatus;
+  summary: string | null;
+  funnel_type: OfferFunnelType | null;
+  niche: string | null;
+  is_monitored: boolean;
+  checkout_url: string | null;
+  ads_page_url: string | null;
+  conversion_page_url: string | null;
   created_at: string;
   updated_at: string | null;
 }
