@@ -26,9 +26,15 @@ chrome.runtime.onMessage.addListener((rawMessage: unknown, _sender, sendResponse
         case 'ESCALADS_AD_CAPTURED': {
           const payload = validatePayload(message.payload);
           const config = await getConfig();
-          if (!config.token) {
-            console.warn('[EscalAds] Missing token. Ignoring captured ad.');
-            sendResponse({ok: false, error: 'missing-token'});
+          if (!config.jwtToken) {
+            console.warn('[EscalAds] Missing JWT token. Ignoring captured ad.');
+            sendResponse({ok: false, error: 'missing-jwt'});
+            return;
+          }
+
+          if (!config.apiKey) {
+            console.warn('[EscalAds] Missing API key. Ignoring captured ad.');
+            sendResponse({ok: false, error: 'missing-api-key'});
             return;
           }
 
@@ -36,7 +42,8 @@ chrome.runtime.onMessage.addListener((rawMessage: unknown, _sender, sendResponse
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${config.token}`
+              Authorization: `Bearer ${config.jwtToken}`,
+              'X-API-Key': config.apiKey
             },
             body: JSON.stringify(payload)
           });

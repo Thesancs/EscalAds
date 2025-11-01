@@ -2,7 +2,8 @@ import {adSnapshotPayloadSchema, type AdSnapshotPayload} from '@escalads/shared'
 
 export interface ExtensionConfig {
   apiBaseUrl: string;
-  token: string;
+  jwtToken: string;
+  apiKey: string;
 }
 
 export type ExtensionMessage =
@@ -11,7 +12,8 @@ export type ExtensionMessage =
 
 export const DEFAULT_EXTENSION_CONFIG: ExtensionConfig = {
   apiBaseUrl: 'http://localhost:4000',
-  token: ''
+  jwtToken: '',
+  apiKey: ''
 };
 
 export function validatePayload(payload: unknown): AdSnapshotPayload {

@@ -1,6 +1,7 @@
 
 import {
   adSearchSchema,
+  currentUserSchema,
   loginRequestSchema,
   loginResponseSchema,
   paginatedAdsSchema,
@@ -62,10 +63,11 @@ export async function register(email: string, password: string, fullName?: strin
 }
 
 export async function getCurrentUser(token: string) {
-  return apiFetch('/auth/me', {
+  const response = await apiFetch('/auth/me', {
     method: 'GET',
     token
   });
+  return currentUserSchema.parse(response);
 }
 
 export interface GetAdsParams {
@@ -107,8 +109,36 @@ export async function getAd(token: string, adId: string) {
   });
 }
 
+export interface AdsSummaryResponse {
+  totals: {
+    trackedAds: number;
+    activeAds: number;
+    advertisers: number;
+    recentCaptures: number;
+  };
+  platformBreakdown: Array<{
+    platform: 'FACEBOOK' | 'INSTAGRAM';
+    activeAds: number;
+  }>;
+  topAdvertisers: Array<{
+    advertiserName: string;
+    activeAds: number;
+    avgVariants: number;
+    avgActiveDays: number;
+    totalObservations: number;
+  }>;
+  topCountries: Array<{
+    country: string;
+    activeAds: number;
+  }>;
+  velocity: {
+    averageActiveDays: number;
+    averageVariants: number;
+  };
+}
+
 export async function getSummary(token: string) {
-  return apiFetch('/ads/insights/summary', {
+  return apiFetch<AdsSummaryResponse>('/ads/insights/summary', {
     method: 'GET',
     token
   });
@@ -119,4 +149,28 @@ export async function getAssetDownloadUrl(token: string, adId: string, assetId: 
     method: 'GET',
     token
   });
+}
+
+export async function rotateApiKey(token: string) {
+  return apiFetch<{apiKey: string; lastRotatedAt: string}>('/auth/api-key/rotate', {
+    method: 'POST',
+    token
+  });
+}
+
+export interface ExtensionRelease {
+  version: string;
+  channel: 'STABLE' | 'BETA' | 'CANARY';
+  packageUrl: string;
+  checksum: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export async function getLatestExtensionRelease(token: string) {
+  const response = await apiFetch<ExtensionRelease>('/extension/releases/latest', {
+    method: 'GET',
+    token
+  });
+  return response;
 }
