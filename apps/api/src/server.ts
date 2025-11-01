@@ -5,6 +5,7 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify from 'fastify';
 
 import {env} from './env';
+import {apiKeyPlugin} from './plugins/api-key';
 import {authPlugin} from './plugins/auth';
 import {minioPlugin} from './plugins/minio';
 import {supabasePlugin} from './plugins/supabase';
@@ -12,6 +13,7 @@ import {queuesPlugin} from './plugins/queues';
 import {redisPlugin} from './plugins/redis';
 import {registerAdsRoutes} from './routes/ads.routes';
 import {registerAuthRoutes} from './routes/auth.routes';
+import {registerExtensionRoutes} from './routes/extension.routes';
 import {registerHealthRoutes} from './routes/health.routes';
 
 export async function buildServer() {
@@ -56,10 +58,12 @@ export async function buildServer() {
   await app.register(queuesPlugin);
   await app.register(minioPlugin);
   await app.register(authPlugin);
+  await app.register(apiKeyPlugin);
 
   await app.register(registerHealthRoutes, {prefix: '/health'});
   await app.register(registerAuthRoutes, {prefix: '/auth'});
   await app.register(registerAdsRoutes, {prefix: '/ads'});
+  await app.register(registerExtensionRoutes, {prefix: '/extension'});
 
   return app;
 }

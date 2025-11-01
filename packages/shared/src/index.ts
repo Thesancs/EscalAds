@@ -9,16 +9,25 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+const userSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  fullName: z.string().nullable(),
+  role: userRoleSchema,
+  apiKeyLastRotatedAt: z.string().nullable().optional(),
+  hasApiKey: z.boolean().optional()
+});
+
 export const loginResponseSchema = z.object({
   token: z.string(),
-  user: z.object({
-    id: z.string(),
-    email: z.string().email(),
-    fullName: z.string().nullable(),
-    role: userRoleSchema
-  })
+  user: userSchema
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const currentUserSchema = userSchema.extend({
+  createdAt: z.string().optional()
+});
+export type CurrentUser = z.infer<typeof currentUserSchema>;
 
 export const registerRequestSchema = z
   .object({

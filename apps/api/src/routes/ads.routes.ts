@@ -459,7 +459,7 @@ export async function registerAdsRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post('/', {preHandler: [app.authenticate]}, async (request, reply) => {
+  app.post('/', {preHandler: [app.authenticate, app.verifyApiKey]}, async (request, reply) => {
     const payload: AdSnapshotPayload = adSnapshotPayloadSchema.parse(request.body);
     const userId = request.user?.id ?? null;
 
@@ -672,7 +672,8 @@ export async function registerAdsRoutes(app: FastifyInstance) {
       captured_at: snapshot.captured_at,
       similar_ads_payload: insights?.similarAds ? (insights.similarAds as Json) : null,
       advertiser_meta: insights?.advertiser ? (insights.advertiser as Json) : null,
-      extension_version: payload.extensionVersion ?? null
+      extension_version: payload.extensionVersion ?? null,
+      api_key_fingerprint: request.apiKeyFingerprint ?? null
     });
 
     if (captureError) {

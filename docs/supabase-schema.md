@@ -4,21 +4,65 @@ This document translates the previous Prisma/Postgres schema into the Supabase s
 
 ## Core authentication
 
-- `auth.users` *(managed by Supabase Auth)*  
+- `auth.users` *(managed by Supabase Auth)*
   Stores the canonical identity. We reuse it for JWT issuing and row-level security (RLS).
 
-- `public.profiles`  
+- `public.profiles`
   | Column              | Type        | Notes                                                                 |
   | ------------------- | ----------- | --------------------------------------------------------------------- |
   | `id`                | uuid        | Primary key, `references auth.users.id` (`on delete cascade`).        |
   | `email`             | text        | Kept in sync with `auth.users.email` via trigger.                     |
   | `full_name`         | text        | Optional display name.                                                |
   | `role`              | text        | Enum: `OWNER`, `ADMIN`, `MEMBER`. Defaults to `MEMBER`.               |
-  | `api_key`           | text        | Nullable, reserved for future ingestion API keys.                     |
+  | `api_key_hash`      | text        | Non-null; stores bcrypt/argon hash of the user's active API key.      |
+  | `api_key_last_rotated_at` | timestamptz | Default `now()`. Used to enforce rotation policies.                  |
   | `created_at`        | timestamptz | Default `now()`.                                                      |
   | `updated_at`        | timestamptz | Managed by trigger.                                                   |
 
   **RLS**: enable and allow `SELECT/UPDATE/DELETE` only when `id = auth.uid()`. Admin/owner roles can be granted broader access through an additional policy.
+
+- `public.api_key_audit`
+  Lightweight table to capture API key lifecycle changes.
+
+  | Column              | Type        | Notes                                                                |
+  | ------------------- | ----------- | -------------------------------------------------------------------- |
+  | `id`                | uuid        | Primary key.                                                         |
+  | `profile_id`        | uuid        | FK → `profiles.id`.                                                  |
+  | `event`             | text        | Enum: `ISSUED`, `ROTATED`, `REVOKED`.                                |
+  | `api_key_prefix`    | text        | First 6 chars of the plaintext key for debugging.                    |
+  | `performed_by`      | uuid        | FK → `profiles.id` (admin/self who triggered the change).            |
+  | `created_at`        | timestamptz | Default `now()`.                                                     |
+
+  RLS: owners/admins can view all entries; members can view their own history.
+
+API key issuance occurs via a Postgres function invoked by the API. The function:
+
+```sql
+create function public.rotate_api_key()
+returns text
+security definer
+set search_path = public
+language plpgsql
+as $$
+declare
+  v_raw_key text := encode(gen_random_bytes(24), 'base64');
+  v_hash text := crypt(v_raw_key, gen_salt('bf', 12));
+begin
+  update public.profiles
+    set api_key_hash = v_hash,
+        api_key_last_rotated_at = now()
+  where id = auth.uid()
+  returning id into strict;
+
+  insert into public.api_key_audit(profile_id, event, api_key_prefix, performed_by)
+  values (auth.uid(), 'ROTATED', left(v_raw_key, 6), auth.uid());
+
+  return v_raw_key;
+end;
+$$;
+```
+
+The API invokes the function with the service role and returns the plaintext key to the caller exactly once.
 
 ## Canonical ads
 
@@ -109,6 +153,7 @@ This document translates the previous Prisma/Postgres schema into the Supabase s
   | `ad_id`                | uuid        | FK → `ads.id`.                                                    |
   | `snapshot_id`          | uuid        | FK → `ad_snapshots.id`.                                           |
   | `captured_by`          | uuid        | Nullable FK → `profiles.id`.                                      |
+  | `api_key_fingerprint`  | text        | SHA-256 digest of the API key presented; aids in audits.          |
   | `captured_at`          | timestamptz | Default `now()`.                                                  |
   | `similar_ads_payload`  | jsonb       | Raw list of similar ads returned by scraping (ids, urls, etc.).   |
   | `advertiser_meta`      | jsonb       | Stores advertiser-level stats used to update `ad_metrics`.        |
@@ -149,7 +194,7 @@ This document translates the previous Prisma/Postgres schema into the Supabase s
 
 ## Analytical helpers
 
-- `public.advertisers` *(materialized view or table)*  
+- `public.advertisers` *(materialized view or table)*
   Summarises advertiser-level stats for quick aggregation. Refresh via cron or background worker.
 
   | Column            | Type        | Notes                                                 |
@@ -180,16 +225,37 @@ This document translates the previous Prisma/Postgres schema into the Supabase s
 
   Supabase clients can then query `ads_feed` with `select('*, ad_assets(*)')`.
 
+## Extension distribution
+
+- `public.extension_releases`
+
+  | Column            | Type        | Notes                                                                 |
+  | ----------------- | ----------- | --------------------------------------------------------------------- |
+  | `id`              | uuid        | Primary key.                                                          |
+  | `version`         | text        | Semantic version string; unique.                                      |
+  | `channel`         | text        | Enum: `STABLE`, `BETA`, `CANARY`.                                      |
+  | `package_url`     | text        | Signed storage URL (MinIO/Supabase Storage) for CRX/ZIP package.      |
+  | `checksum`        | text        | SHA-256 to verify download integrity.                                 |
+  | `created_at`      | timestamptz | Default `now()`.                                                       |
+  | `created_by`      | uuid        | FK → `profiles.id` (admin who uploaded).                               |
+  | `notes`           | text        | Changelog snippet displayed in the dashboard.                          |
+
+  RLS: only admins/owners can `INSERT`/`UPDATE`; any authenticated user can `SELECT` to download.
+
+The dashboard fetches the latest `STABLE` release metadata and surfaces a download button gated behind authentication. The extension compares its bundled version with the API response to prompt users when an update is available.
+
 ## Row-level security summary
 
 | Table               | Policy goal                                             |
 | ------------------- | ------------------------------------------------------- |
 | `profiles`          | Users manage their own profile; admins get full access. |
+| `api_key_audit`     | Members see their own history; admins see all events.   |
 | `ads`               | Readable by any authenticated user (no edits directly). |
 | `ad_assets`         | Readable to facilitate creative display.                |
 | `ad_snapshots`      | Restricted to staff roles due to raw payload content.   |
 | `extension_captures`| Insert via service role; select restricted.            |
 | `user_custom_ads`   | Fully private per user (`user_id = auth.uid()`).        |
+| `extension_releases`| Authenticated users can view/download; admins manage.   |
 
 ## Suggested migrations order
 

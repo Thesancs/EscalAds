@@ -52,13 +52,16 @@
   <body>
     <div class="card">
       <h1>EscalAds Collector</h1>
-      <p>Configure the API endpoint and token that will receive captured ads.</p>
+      <p>Configure the API endpoint, session token, and personal API key required to send captures.</p>
       <form id="options-form">
         <label for="apiBase">API Base URL</label>
         <input id="apiBase" name="apiBase" type="url" placeholder="http://localhost:4000" required />
 
-        <label for="token">JWT Token</label>
-        <input id="token" name="token" type="text" placeholder="eyJhbGciOi..." required />
+        <label for="jwtToken">JWT Token</label>
+        <input id="jwtToken" name="jwtToken" type="text" placeholder="eyJhbGciOi..." required />
+
+        <label for="apiKey">API Key</label>
+        <input id="apiKey" name="apiKey" type="text" placeholder="escalads_live_..." required />
 
         <button type="submit">Save settings</button>
         <div id="status" class="status"></div>

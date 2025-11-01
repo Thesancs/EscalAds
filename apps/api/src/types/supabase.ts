@@ -9,6 +9,77 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          role: 'OWNER' | 'ADMIN' | 'MEMBER';
+          api_key_hash: string | null;
+          api_key_last_rotated_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          email: string;
+          full_name?: string | null;
+          role?: 'OWNER' | 'ADMIN' | 'MEMBER';
+          api_key_hash?: string | null;
+          api_key_last_rotated_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          email?: string;
+          full_name?: string | null;
+          role?: 'OWNER' | 'ADMIN' | 'MEMBER';
+          api_key_hash?: string | null;
+          api_key_last_rotated_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      api_key_audit: {
+        Row: {
+          id: string;
+          profile_id: string;
+          event: 'ISSUED' | 'ROTATED' | 'REVOKED';
+          api_key_prefix: string;
+          performed_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          event: 'ISSUED' | 'ROTATED' | 'REVOKED';
+          api_key_prefix: string;
+          performed_by: string;
+          created_at?: string;
+        };
+        Update: {
+          profile_id?: string;
+          event?: 'ISSUED' | 'ROTATED' | 'REVOKED';
+          api_key_prefix?: string;
+          performed_by?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'api_key_audit_profile_id_fkey';
+            columns: ['profile_id'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'api_key_audit_performed_by_fkey';
+            columns: ['performed_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       ads: {
         Row: {
           id: string;
@@ -238,6 +309,7 @@ export type Database = {
           similar_ads_payload: Json | null;
           advertiser_meta: Json | null;
           extension_version: string | null;
+          api_key_fingerprint: string | null;
         };
         Insert: {
           id?: string;
@@ -248,6 +320,7 @@ export type Database = {
           similar_ads_payload?: Json | null;
           advertiser_meta?: Json | null;
           extension_version?: string | null;
+          api_key_fingerprint?: string | null;
         };
         Update: {
           ad_id?: string;
@@ -257,6 +330,7 @@ export type Database = {
           similar_ads_payload?: Json | null;
           advertiser_meta?: Json | null;
           extension_version?: string | null;
+          api_key_fingerprint?: string | null;
         };
         Relationships: [
           {
@@ -274,6 +348,45 @@ export type Database = {
           {
             foreignKeyName: 'extension_captures_captured_by_fkey';
             columns: ['captured_by'];
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      extension_releases: {
+        Row: {
+          id: string;
+          version: string;
+          channel: 'STABLE' | 'BETA' | 'CANARY';
+          package_url: string;
+          checksum: string;
+          created_at: string;
+          created_by: string | null;
+          notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          version: string;
+          channel: 'STABLE' | 'BETA' | 'CANARY';
+          package_url: string;
+          checksum: string;
+          created_at?: string;
+          created_by?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          version?: string;
+          channel?: 'STABLE' | 'BETA' | 'CANARY';
+          package_url?: string;
+          checksum?: string;
+          created_at?: string;
+          created_by?: string | null;
+          notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'extension_releases_created_by_fkey';
+            columns: ['created_by'];
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
           }
@@ -338,6 +451,7 @@ export type Database = {
       asset_type: 'IMAGE' | 'VIDEO' | 'UNKNOWN';
       spend_bucket: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH';
       source_type: 'EXTENSION' | 'USER_CUSTOM';
+      extension_channel: 'STABLE' | 'BETA' | 'CANARY';
     };
   };
 };

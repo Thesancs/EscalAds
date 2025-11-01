@@ -1,9 +1,20 @@
 
 'use client';
 
-import {useMemo, useState, type ReactNode} from 'react';
-import {useQuery} from '@tanstack/react-query';
-import {Search, ArrowRight, Globe, BarChart, PlayCircle, VideoIcon} from 'lucide-react';
+import {useEffect, useMemo, useState, type ReactNode} from 'react';
+import {useMutation, useQuery} from '@tanstack/react-query';
+import {
+  Search,
+  ArrowRight,
+  Globe,
+  BarChart,
+  PlayCircle,
+  VideoIcon,
+  Download,
+  RefreshCcw,
+  Copy,
+  Key
+} from 'lucide-react';
 
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
@@ -19,8 +30,18 @@ import {Input} from '@/components/ui/input';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {useAuth} from '@/lib/auth-context';
-import {getAds, getSummary, type GetAdsParams, getAssetDownloadUrl} from '@/lib/api-client';
+import {
+  getAds,
+  getSummary,
+  type GetAdsParams,
+  getAssetDownloadUrl,
+  rotateApiKey,
+  getLatestExtensionRelease,
+  type AdsSummaryResponse,
+  type ExtensionRelease
+} from '@/lib/api-client';
 import {useToast} from '@/hooks/use-toast';
+import type {PaginatedAds} from '@escalads/shared';
 
 const platformLabels: Record<string, string> = {
   FACEBOOK: 'Facebook',
@@ -34,15 +55,24 @@ const sortLabels: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const {token} = useAuth();
+  const {token, user} = useAuth();
   const {toast} = useToast();
   const [filters, setFilters] = useState<GetAdsParams>({
     sortBy: 'recent',
     page: 1,
     pageSize: 9
   });
+  const [latestApiKey, setLatestApiKey] = useState<string | null>(null);
+  const [lastRotatedAt, setLastRotatedAt] = useState<string | null>(user?.apiKeyLastRotatedAt ?? null);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(Boolean(user?.hasApiKey));
 
-  const {data: summary, isLoading: isLoadingSummary} = useQuery({
+  useEffect(() => {
+    setLastRotatedAt(user?.apiKeyLastRotatedAt ?? null);
+    setHasApiKey(Boolean(user?.hasApiKey));
+    setLatestApiKey(null);
+  }, [user?.apiKeyLastRotatedAt, user?.hasApiKey, user?.id]);
+
+  const {data: summary, isLoading: isLoadingSummary} = useQuery<AdsSummaryResponse>({
     queryKey: ['ads-summary', token],
     queryFn: () => getSummary(token!),
     enabled: Boolean(token)
@@ -52,10 +82,10 @@ export default function DashboardPage() {
     data: ads,
     isLoading: isLoadingAds,
     isFetching: isFetchingAds
-  } = useQuery({
+  } = useQuery<PaginatedAds>({
     queryKey: ['ads', token, filters],
     queryFn: () => getAds(token!, filters),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     enabled: Boolean(token)
   });
 
@@ -63,6 +93,81 @@ export default function DashboardPage() {
     if (!ads) return 1;
     return Math.max(1, Math.ceil(ads.total / ads.pageSize));
   }, [ads]);
+
+  const {data: extensionRelease, isLoading: isLoadingRelease} = useQuery<ExtensionRelease>({
+    queryKey: ['extension-release', token],
+    queryFn: () => getLatestExtensionRelease(token!),
+    enabled: Boolean(token)
+  });
+
+  const rotateKeyMutation = useMutation({
+    mutationFn: async () => {
+      if (!token) {
+        throw new Error('missing-token');
+      }
+      return rotateApiKey(token);
+    },
+    onSuccess: (result) => {
+      setLatestApiKey(result.apiKey);
+      setLastRotatedAt(result.lastRotatedAt);
+      setHasApiKey(true);
+      toast({
+        title: 'Nova chave criada',
+        description: 'Copie e armazene sua chave. Ela não será exibida novamente.'
+      });
+    },
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível gerar a chave',
+        description: 'Tente novamente em instantes.'
+      });
+    }
+  });
+
+  const isRotatingKey = rotateKeyMutation.isPending;
+
+  const formatDateTime = (value: string | null) => {
+    if (!value) {
+      return 'Nunca gerada';
+    }
+    return new Date(value).toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+  };
+
+  const handleDownloadExtension = () => {
+    if (extensionRelease?.packageUrl) {
+      window.open(extensionRelease.packageUrl, '_blank', 'noopener');
+    }
+  };
+
+  const handleRotateKey = async () => {
+    try {
+      await rotateKeyMutation.mutateAsync();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleCopyKey = async () => {
+    if (!latestApiKey) return;
+    try {
+      await navigator.clipboard.writeText(latestApiKey);
+      toast({
+        title: 'Chave copiada',
+        description: 'Cole em um local seguro para configurar a extensão.'
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível copiar',
+        description: 'Selecione e copie manualmente a chave exibida.'
+      });
+    }
+  };
 
   const handleDownloadAsset = async (adId: string, assetId: string) => {
     if (!token || !assetId) {
@@ -88,6 +193,118 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <section className="grid gap-4 lg:grid-cols-[2fr,1fr]">
+        <Card className="border-primary/20 bg-neutral-900/70">
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-base font-semibold text-white">
+                Extensão oficial EscalAds
+              </CardTitle>
+              <span className="text-xs text-muted-foreground">
+                Faça o download autenticado para habilitar o coletor no seu navegador.
+              </span>
+            </div>
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Download className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingRelease ? (
+              <Skeleton className="h-16 w-full rounded-xl" />
+            ) : extensionRelease ? (
+              <div className="space-y-3 text-sm text-white">
+                <div className="flex items-center justify-between">
+                  <span>Versão {extensionRelease.version}</span>
+                  <Badge variant="secondary" className="bg-primary/15 text-primary">
+                    {extensionRelease.channel}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Publicado em</span>
+                  <span>{formatDateTime(extensionRelease.createdAt)}</span>
+                </div>
+                {extensionRelease.notes ? (
+                  <p className="text-xs text-muted-foreground italic">“{extensionRelease.notes}”</p>
+                ) : null}
+                <div className="flex items-center justify-between rounded-lg border border-white/5 bg-neutral-950/50 px-3 py-2 text-xs text-muted-foreground">
+                  <span>Checksum</span>
+                  <span className="font-mono text-[11px]">{extensionRelease.checksum.slice(0, 12)}…</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhuma release disponível no momento. Verifique novamente mais tarde.
+              </p>
+            )}
+            <Button
+              onClick={handleDownloadExtension}
+              disabled={!extensionRelease?.packageUrl}
+              className="w-full"
+            >
+              <Download className="mr-2 h-4 w-4" /> Baixar extensão
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 bg-neutral-900/70">
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-base font-semibold text-white">Gerencie sua chave de API</CardTitle>
+              <span className="text-xs text-muted-foreground">
+                Cada usuário possui uma chave única para autenticar a extensão.
+              </span>
+            </div>
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Key className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-white">
+            <div className="flex items-center justify-between rounded-lg border border-white/5 bg-neutral-950/50 px-3 py-2">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">Última rotação</span>
+              <span>{formatDateTime(lastRotatedAt)}</span>
+            </div>
+            {latestApiKey ? (
+              <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/10 p-3">
+                <p className="text-xs text-primary/80">
+                  Copie e armazene esta chave com segurança. Ela não ficará visível novamente.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate text-sm text-primary">{latestApiKey}</code>
+                  <Button size="icon" variant="secondary" onClick={handleCopyKey} className="h-9 w-9">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : hasApiKey ? (
+              <p className="text-xs text-muted-foreground">
+                Uma chave ativa já está associada ao seu perfil. Gere uma nova apenas se precisar revogar a atual.
+              </p>
+            ) : (
+              <p className="text-xs text-yellow-400">
+                Nenhuma chave ativa encontrada. Gere sua chave para autorizar a extensão a enviar capturas.
+              </p>
+            )}
+            <Button
+              onClick={handleRotateKey}
+              disabled={isRotatingKey || !token}
+              variant="outline"
+              className="w-full border-primary/40 text-primary hover:bg-primary/10"
+            >
+              {isRotatingKey ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCcw className="h-4 w-4 animate-spin" /> Gerando…
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <RefreshCcw className="h-4 w-4" />
+                  {hasApiKey ? 'Rotacionar chave de API' : 'Gerar chave de API'}
+                </span>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {isLoadingSummary ? (
           Array.from({length: 4}).map((_, index) => <Skeleton key={index} className="h-32 rounded-xl" />)
