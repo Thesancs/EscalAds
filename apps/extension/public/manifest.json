@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "EscalAds Collector",
+  "description": "Captura anúncios da Meta Ad Library e envia para a API EscalAds.",
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.facebook.com/ads/library/*",
+    "https://www.instagram.com/ads/library/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/ads/library/*",
+        "https://www.instagram.com/ads/library/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "EscalAds Collector"
+  },
+  "options_page": "options.html"
+}

@@ -1,0 +1,26 @@
+
+{
+  "name": "@escalads/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm-run-all clean build:code copy:static",
+    "build:code": "tsup src/background.ts src/content-script.ts src/options.ts --format esm --target chrome114 --splitting false --minify --sourcemap --out-dir dist",
+    "copy:static": "copyfiles -u 1 public/**/* dist",
+    "dev": "npm-run-all clean copy:static --parallel dev:watch",
+    "dev:watch": "tsup src/background.ts src/content-script.ts src/options.ts --watch --format esm --target chrome114 --splitting false --sourcemap --out-dir dist"
+  },
+  "dependencies": {
+    "@escalads/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.260",
+    "copyfiles": "^2.4.1",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.1.0",
+    "typescript": "^5.6.3"
+  }
+}

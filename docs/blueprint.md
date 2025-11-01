@@ -1,17 +1,44 @@
-# **App Name**: Scalify Dashboard
+﻿# EscalAds Product Blueprint
 
-## Core Features:
+## Product statement
 
-- Dashboard Layout: Implement a responsive layout with a fixed sidebar on desktop and a collapsible sidebar on mobile, a header, and a main content area for the dashboard.
-- Sidebar Navigation: Create a sidebar navigation menu with icons from Lucide-react, including links to the Dashboard, Ofertas, Reviews, Anticlone, Clonador, and Metadata modules.
-- Welcome Placeholder: Display a welcome message with a title and subtitle in the main content area, along with placeholder cards for each module with a 'Coming Soon' message.
-- User Header: Implement a header that displays the logged-in user's name (mocked with 'Usuário Teste') and a placeholder logout button.
+EscalAds is an intelligence layer for paid social teams. It collects public creatives from Meta Ad Library, highlights campaigns that are still scaling, and makes creative patterns searchable for media buyers, affiliates, and infoproduct owners.
 
-## Style Guidelines:
+## MVP scope
 
-- Background color: Matte black (#0D0D0D) to provide a dark and premium feel.
-- Primary color: Purple (#8B5CF6) for a modern and stylish look.
-- Secondary color: Gold (#FACC15) as an accent color to highlight important elements.
-- Font: 'Inter' (sans-serif) for a modern, premium, and readable UI.
-- Use Tailwind CSS to create a responsive layout that adapts to different screen sizes, with a fixed sidebar on desktop and a collapsible sidebar on mobile.  Cards should have rounded corners (2xl) and a subtle glassmorphic effect.
-- Apply subtle fade-in animations to the main content area for a smooth user experience.
+- JWT-based auth (owner/admin/member roles)
+- Ad ingestion endpoint (extension -> API)
+- Creative storage (MinIO) with async asset download
+- Dashboard with search, filters, insights, and creative list
+- Chrome extension for Facebook/Instagram Ad Library capture
+- Dockerised infra (Supabase-managed schema, Redis, MinIO, API worker)
+
+## Future backlog
+
+- Semantic search (vector DB) and similarity clustering
+- Automatic classification with AI labels
+- Scheduled monitoring for saved offers / advertisers
+- Reporting exports and trend dashboards
+- Subscription plans and billing guards
+
+## Data model (high level)
+
+- `User` – auth entity with role, password hash, API key (future)
+- `Ad` – canonical creative metadata (advertiser, texts, formats, spread)
+- `AdAsset` – stored media in MinIO with checksum/dimensions
+- `AdSnapshot` – raw capture payload from extension (audit trail)
+- `AdMetric` – derived aggregation (active days, observations, spread)
+
+## Operational flow
+
+1. User logs into the dashboard and retrieves a JWT token.
+2. Chrome extension monitors Meta Ad Library, extracts creatives, and posts snapshots to `/ads`.
+3. API writes snapshot, upserts ad, enqueues asset downloads.
+4. Worker fetches image/video, uploads to MinIO, updates `AdAsset` metadata.
+5. Dashboard fetches `/ads` and `/ads/insights/summary` for filters, cards, and creative grid.
+
+## Non-functional notes
+
+- Start with eventual consistency (assets may appear after ingestion) – surface status in UI later.
+- Keep infra local-friendly: everything runs via `docker-compose up -d`.
+- Prefer ASCII/English naming across code and docs to avoid encoding pitfalls.

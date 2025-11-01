@@ -1,0 +1,17 @@
+﻿{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "emitDecoratorMetadata": false,
+    "experimentalDecorators": false,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "types": ["node"],
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.mts", "src/**/*.cts"],
+  "exclude": ["dist", "node_modules"]
+}

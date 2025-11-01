@@ -1,0 +1,78 @@
+﻿services:
+  redis:
+    image: redis:7-alpine
+    container_name: escalads-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  minio:
+    image: minio/minio:latest
+    container_name: escalads-minio
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+
+  api:
+    image: node:20-alpine
+    container_name: escalads-api
+    working_dir: /workspace
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @escalads/api run dev"
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      SUPABASE_URL: https://<your-project>.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: change-me
+      SUPABASE_ANON_KEY: change-me
+      JWT_SECRET: super-secret-change-me
+      DEFAULT_LOGIN_EMAIL: admin@escalads.dev
+      DEFAULT_LOGIN_PASSWORD: changeme
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_USE_SSL: 'false'
+      MINIO_BUCKET_ADS: ad-creatives
+      REDIS_URL: redis://redis:6379
+      ASSET_QUEUE_NAME: ad-asset-download
+    depends_on:
+      - redis
+      - minio
+    volumes:
+      - ./:/workspace
+
+  worker:
+    image: node:20-alpine
+    container_name: escalads-worker
+    working_dir: /workspace
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @escalads/api run queue:worker"
+    depends_on:
+      - redis
+      - minio
+    environment:
+      NODE_ENV: development
+      SUPABASE_URL: https://<your-project>.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: change-me
+      JWT_SECRET: super-secret-change-me
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_USE_SSL: 'false'
+      MINIO_BUCKET_ADS: ad-creatives
+      REDIS_URL: redis://redis:6379
+      ASSET_QUEUE_NAME: ad-asset-download
+    volumes:
+      - ./:/workspace
+
+volumes:
+  minio-data:
